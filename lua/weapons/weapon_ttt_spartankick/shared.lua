@@ -23,29 +23,23 @@ if SERVER then
 	resource.AddFile("sound/player/skick/madness.mp3")
 	resource.AddFile("sound/player/skick/sparta.mp3")
 
-	resource.AddFile("materials/vgui/ttt/icon_sparta.png")
+	resource.AddFile("materials/vgui/ttt/icon_skick.vmt")
 end
 
 if CLIENT then
-	SWEP.Category = "Shot846"
 	SWEP.DrawAmmo = false
 	SWEP.DrawCrosshair = false
-	SWEP.PrintName = "Spartan Kick"
-	SWEP.Slot = 7
 
 	SWEP.EquipMenuData = {
 		type = "item_weapon",
-		desc = "Kick them out of their Life!"
+		name = "name_spartan_kick",
+		desc = "desc_spartan_kick"
 	}
 
-	SWEP.Icon = "vgui/ttt/icon_sparta.png"
+	SWEP.Icon = "vgui/ttt/icon_skick"
 end
 
 SWEP.Base = "weapon_tttbase"
-SWEP.PrintName = "Spartan Kick"
-SWEP.Author = "Converted by Porter"
-SWEP.Instructions = "Spartan Kick!"
-SWEP.Purpose = "THIS IS SPARTAAAAAAA!"
 
 SWEP.ViewModelFOV = 75
 SWEP.ViewModelFlip = false
@@ -62,16 +56,15 @@ SWEP.CanBuy = {ROLE_TRAITOR}
 SWEP.AllowDrop = false
 SWEP.DestroyDoor = 1
 
--------------Primary Fire Attributes----------------------------------------
-SWEP.Primary.Delay = 0.4 --In seconds
-SWEP.Primary.Recoil = 0 --Gun Kick
-SWEP.Primary.Damage = 15 --Damage per Bullet
-SWEP.Primary.NumShots = 1 --Number of shots per one fire
-SWEP.Primary.Cone = 0 --Bullet Spread
-SWEP.Primary.ClipSize = -1 --Use "-1 if there are no clips"
-SWEP.Primary.DefaultClip = -1 --Number of shots in next clip
-SWEP.Primary.Automatic = true --Pistol fire (false) or SMG fire (true)
-SWEP.Primary.Ammo = "none" --Ammo Type
+SWEP.Primary.Delay = 0.4
+SWEP.Primary.Recoil = 0
+SWEP.Primary.Damage = 15
+SWEP.Primary.NumShots = 1
+SWEP.Primary.Cone = 0
+SWEP.Primary.ClipSize = -1
+SWEP.Primary.DefaultClip = -1
+SWEP.Primary.Automatic = true
+SWEP.Primary.Ammo = "none"
 
 util.PrecacheSound("player/skick/madness.mp3")
 util.PrecacheSound("player/skick/foot_kickwall.wav")
@@ -84,25 +77,37 @@ util.PrecacheSound("player/skick/kick4.wav")
 util.PrecacheSound("player/skick/kick5.wav")
 util.PrecacheSound("player/skick/kick6.wav")
 
+local soundHit = {
+	Sound("player/skick/foot_kickwall.wav")
+}
+
+local soundHitFlesh = {
+	Sound("player/skick/kick1.wav"),
+	Sound("player/skick/kick2.wav"),
+	Sound("player/skick/kick3.wav"),
+	Sound("player/skick/kick4.wav"),
+	Sound("player/skick/kick5.wav"),
+	Sound("player/skick/kick6.wav")
+}
+
+local function ResetWeaponTimer()
+	local plys = player.GetAll()
+
+	for i = 1, #plys do
+		local ply = plys[i]
+
+		timer.Remove("skick_animation_" .. ply:SteamID64())
+		timer.Remove("skick_animation_idle_" .. ply:SteamID64())
+		timer.Remove("skick_attack_" .. ply:SteamID64())
+	end
+end
+
 function SWEP:Initialize()
 	if CLIENT then
-		self:AddHUDHelp("MOUSE1 : Kick Like a Spartan", "MOUSE2 : Play Madness Sound", false)
+		self:AddHUDHelp("skick_help_msb1", "skick_help_msb2", true)
 	else
 		self:SetWeaponHoldType("normal")
 	end
-
-	self.Hit = {
-		Sound("player/skick/foot_kickwall.wav")
-	}
-
-	self.FleshHit = {
-		Sound("player/skick/kick1.wav"),
-		Sound("player/skick/kick2.wav"),
-		Sound("player/skick/kick3.wav"),
-		Sound("player/skick/kick4.wav"),
-		Sound("player/skick/kick5.wav"),
-		Sound("player/skick/kick6.wav")
-	}
 end
 
 function SWEP:Precache()
@@ -112,155 +117,147 @@ end
 function SWEP:Deploy()
 	self:SendWeaponAnim(ACT_VM_IDLE)
 
+	-- store owner in extra variable because the owner isn't valid
+	-- once OnDrop is called
+	self.notfiyOwner = self:GetOwner()
+
 	return true
+end
+
+if SERVER then
+	util.AddNetworkString("SKickResetClientTimer")
+
+	function SWEP:Holster(wep)
+		ResetWeaponTimer()
+
+		net.Start("SKickResetClientTimer")
+		net.Send(self.notfiyOwner)
+
+		self.notfiyOwner = nil
+
+		return self.BaseClass.Holster(self, wep)
+	end
+
+	function SWEP:OnDrop()
+		ResetWeaponTimer()
+
+		net.Start("SKickResetClientTimer")
+		net.Send(self.notfiyOwner)
+
+		self.notfiyOwner = nil
+
+		self.BaseClass.OnDrop(self)
+	end
+end
+
+if CLIENT then
+	net.Receive("SKickResetClientTimer", function()
+		ResetWeaponTimer()
+	end)
 end
 
 function SWEP:PrimaryAttack()
 	if CurTime() < self.NextStrike then return end
 
 	self:EmitSound("player/skick/sparta.mp3")
-
 	self.NextStrike = CurTime() + 3.5
 
-	local swep = self
+	local owner = self:GetOwner()
 
-	timer.Create("skicktimer1", 1.80, 1, function()
-		if IsValid(swep) then
-			swep.AttackAnim(swep)
-		end
+	owner:SetAnimation(PLAYER_ATTACK1)
+
+	timer.Create("skick_animation_" .. owner:SteamID64(), 1.80, 1, function()
+		if not IsValid(self) then return end
+
+		self.AttackAnim(self)
 	end)
 
-	timer.Create("skicktimer2", 2.40, 1, function()
-		if IsValid(swep) then
-			swep:SendWeaponAnim(ACT_VM_IDLE)
-		end
+	timer.Create("skick_animation_idle_" .. owner:SteamID64(), 2.40, 1, function()
+		if not IsValid(self) then return end
+
+		self:SendWeaponAnim(ACT_VM_IDLE)
 	end)
 
-	timer.Create("skicktimer3", 2.0, 1, function()
-		if IsValid(swep) then
-			swep.ShootBullets(swep)
-		end
-	end)
+	timer.Create("skick_attack_" .. owner:SteamID64(), 2.0, 1, function()
+		if not IsValid(self) then return end
 
-	self.Owner:SetAnimation(PLAYER_ATTACK1)
+		self.ShootBullets(self)
+	end)
 end
 
 local kickedPlys = {}
 
-hook.Add("TTTPrepareRound", "SpartanKickEnd", function(ply)
-	for i = 1, 6 do
-		local name = "skicktimer" .. i
-
-		if timer.Exists(name) then
-			timer.Remove(name)
-		end
-	end
+hook.Add("TTTPrepareRound", "SpartanKickEnd", function()
+	ResetWeaponTimer()
 
 	kickedPlys = {}
 end)
 
 if SERVER then
 	hook.Add("TTT2ModifyRagdollVelocity", "TTT2FixSpartanKickVelocity", function(ply, rag, v)
-		for k, p in ipairs(kickedPlys) do
-			if p == ply then
-				table.remove(kickedPlys, k)
+		for i = 1, #kickedPlys do
+			if kickedPlys[i] ~= ply then continue end
 
-				v:Mul(5)
-			end
+			table.remove(kickedPlys, i)
+
+			v:Mul(5)
 		end
 	end)
 end
 
 function SWEP:ShootBullets()
-	local owner = self:GetOwner() or self.Owner
+	local owner = self:GetOwner()
 
 	if not IsValid(owner) then return end
 
 	self:EmitSound("player/skick/foot_swing.wav")
 
 	local trace = owner:GetEyeTrace()
+	local ent = trace.Entity
 
-	if trace.HitPos:Distance(owner:GetShootPos()) <= 130 then
-		if SERVER and TTT2 and trace.Entity:IsPlayer() or trace.Entity:IsNPC() then
-			kickedPlys[#kickedPlys + 1] = trace.Entity
+	if trace.HitPos:Distance(owner:GetShootPos()) > 130 then return end
+
+	if SERVER and ent:IsPlayer() or ent:IsNPC() then
+		kickedPlys[#kickedPlys + 1] = ent
+	end
+
+	local bullet = {}
+	bullet.Num = 5
+	bullet.Src = owner:GetShootPos()
+	bullet.Dir = owner:GetAimVector()
+	bullet.Spread = Vector(0.04, 0.04, 0.04)
+	bullet.Tracer = 0
+	bullet.Force = 450
+	bullet.Damage = 1000000
+
+	owner:FireBullets(bullet)
+
+	if not IsValid(ent) then return end
+
+	if ent:IsPlayer() or ent:IsNPC() or ent:GetClass() == "prop_ragdoll" then
+		owner:EmitSound(soundHitFlesh[math.random(1, #soundHitFlesh)])
+	else
+		owner:EmitSound(soundHit[math.random(1, #soundHit)])
+
+		if CLIENT then return end
+
+		if not door.IsValidNormal(ent:GetClass()) then return end
+
+		if ent:IsDoorLocked() and not ent:DoorIsDestructible() then
+			LANG.Msg(owner, "skick_door_locked_indestructible", nil, MSG_MSTACK_WARN)
+
+			return
 		end
 
-		bullet = {}
-		bullet.Num = 5
-		bullet.Src = owner:GetShootPos()
-		bullet.Dir = owner:GetAimVector()
-		bullet.Spread = Vector(0.04, 0.04, 0.04)
-		bullet.Tracer = 0
-		bullet.Force = 450
-		bullet.Damage = 1000000
+		local norm = pos - owner:GetPos()
+		norm:Normalize()
 
-		owner:FireBullets(bullet)
+		local smoke = EffectData()
+		smoke:SetOrigin(ent:GetPos())
 
-		if not IsValid(trace.Entity) then return end
+		util.Effect("effect_smokedoor", smoke)
 
-		if trace.Entity:IsPlayer() or trace.Entity:IsNPC() or trace.Entity:GetClass() == "prop_ragdoll" then
-			owner:EmitSound(self.FleshHit[math.random(1, #self.FleshHit)])
-		else
-			owner:EmitSound(self.Hit[math.random(1, #self.Hit)])
-
-			if SERVER and trace.Entity:GetClass() == "prop_door_rotating" then
-				trace.Entity:Fire("open", "", 0.001)
-				trace.Entity:Fire("unlock", "", 0.001)
-
-				local pos = trace.Entity:GetPos()
-				local model = trace.Entity:GetModel()
-				local skin = trace.Entity:GetSkin()
-
-				local smoke = EffectData()
-				smoke:SetOrigin(pos)
-
-				util.Effect("effect_smokedoor", smoke)
-
-				trace.Entity:SetNotSolid(true)
-				trace.Entity:SetNoDraw(true)
-
-				local function ResetDoor(door, fakedoor)
-					door:SetNotSolid(false)
-					door:SetNoDraw(false)
-
-					fakedoor:Remove()
-				end
-
-				local norm = pos - owner:GetPos()
-				norm:Normalize()
-
-				local push = 1000 * norm
-
-				local ent = ents.Create("prop_physics")
-				ent:SetPos(pos)
-				ent:SetAngles(Angle(10, 50, 0))
-				ent:SetModel(model)
-
-				if skin then
-					ent:SetSkin(skin)
-				end
-
-				ent:Spawn()
-
-				timer.Create("skicktimer4", .01, 1, function()
-					if IsValid(ent) and push then
-						ent:GetPhysicsObject():SetVelocity(push)
-					end
-				end)
-
-				timer.Create("skicktimer5", .01, 1, function()
-					if IsValid(ent) and push then
-						ent:GetPhysicsObject():SetVelocity(push)
-					end
-				end)
-
-				timer.Create("skicktimer6", 25, 1, function()
-					if trace and IsValid(trace.Entity) and IsValid(ent) then
-						ResetDoor(trace.Entity, ent)
-					end
-				end)
-			end
-		end
+		ent:SafeDestroyDoor(owner, 1000 * norm)
 	end
 end
 
