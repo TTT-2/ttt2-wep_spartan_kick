@@ -96,9 +96,9 @@ local function ResetWeaponTimer()
 	for i = 1, #plys do
 		local ply = plys[i]
 
-		timer.Remove("skick_animation_" .. ply:SteamID64())
-		timer.Remove("skick_animation_idle_" .. ply:SteamID64())
-		timer.Remove("skick_attack_" .. ply:SteamID64())
+		timer.Remove("skick_animation_" .. (ply:SteamID64() or ply:EntIndex()))
+		timer.Remove("skick_animation_idle_" .. (ply:SteamID64() or ply:EntIndex()))
+		timer.Remove("skick_attack_" .. (ply:SteamID64() or ply:EntIndex()))
 	end
 end
 
@@ -166,19 +166,19 @@ function SWEP:PrimaryAttack()
 
 	owner:SetAnimation(PLAYER_ATTACK1)
 
-	timer.Create("skick_animation_" .. owner:SteamID64(), 1.80, 1, function()
+	timer.Create("skick_animation_" .. (owner:SteamID64() or owner:EntIndex()), 1.80, 1, function()
 		if not IsValid(self) then return end
 
 		self.AttackAnim(self)
 	end)
 
-	timer.Create("skick_animation_idle_" .. owner:SteamID64(), 2.40, 1, function()
+	timer.Create("skick_animation_idle_" .. (owner:SteamID64() or owner:EntIndex()), 2.40, 1, function()
 		if not IsValid(self) then return end
 
 		self:SendWeaponAnim(ACT_VM_IDLE)
 	end)
 
-	timer.Create("skick_attack_" .. owner:SteamID64(), 2.0, 1, function()
+	timer.Create("skick_attack_" .. (owner:SteamID64() or owner:EntIndex()), 2.0, 1, function()
 		if not IsValid(self) then return end
 
 		self.ShootBullets(self)
