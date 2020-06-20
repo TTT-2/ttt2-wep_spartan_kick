@@ -217,31 +217,26 @@ function SWEP:ShootBullets()
 
 	if trace.HitPos:Distance(owner:GetShootPos()) > 130 then return end
 
-	if SERVER and ent:IsPlayer() or ent:IsNPC() then
+	if SERVER and IsValid(ent) and ent:IsPlayer() or ent:IsNPC() then
 		kickedPlys[#kickedPlys + 1] = ent
 	end
 
-	local bullet = {}
-	bullet.Num = 5
-	bullet.Src = owner:GetShootPos()
-	bullet.Dir = owner:GetAimVector()
-	bullet.Spread = Vector(0.04, 0.04, 0.04)
-	bullet.Tracer = 0
-	bullet.Force = 450
-	bullet.Damage = 1000000
-
-	owner:FireBullets(bullet)
-
-	if not IsValid(ent) then return end
-
-	if ent:IsPlayer() or ent:IsNPC() or ent:GetClass() == "prop_ragdoll" then
+	if IsValid(ent) and (ent:IsPlayer() or ent:IsNPC() or ent:GetClass() == "prop_ragdoll") then
 		owner:EmitSound(soundHitFlesh[math.random(1, #soundHitFlesh)])
-	else
+
+		owner:FireBullets({
+			Num = 5,
+			Src = owner:GetShootPos(),
+			Dir = owner:GetAimVector(),
+			Spread = Vector(0.04, 0.04, 0.04),
+			Tracer = 0,
+			Force = 450,
+			Damage = 1000000
+		})
+	elseif IsValid(ent) and door.IsValidNormal(ent:GetClass()) then
 		owner:EmitSound(soundHit[math.random(1, #soundHit)])
 
 		if CLIENT then return end
-
-		if not door.IsValidNormal(ent:GetClass()) then return end
 
 		if ent:IsDoorLocked() and not ent:DoorIsDestructible() then
 			LANG.Msg(owner, "skick_door_locked_indestructible", nil, MSG_MSTACK_WARN)
@@ -249,15 +244,24 @@ function SWEP:ShootBullets()
 			return
 		end
 
-		local norm = pos - owner:GetPos()
-		norm:Normalize()
-
 		local smoke = EffectData()
 		smoke:SetOrigin(ent:GetPos())
 
 		util.Effect("effect_smokedoor", smoke)
 
-		ent:SafeDestroyDoor(owner, 1000 * norm)
+		ent:SafeDestroyDoor(owner, 50000 * owner:GetForward())
+	else
+		owner:EmitSound(soundHit[math.random(1, #soundHit)])
+
+		owner:FireBullets({
+			Num = 5,
+			Src = owner:GetShootPos(),
+			Dir = owner:GetAimVector(),
+			Spread = Vector(0.04, 0.04, 0.04),
+			Tracer = 0,
+			Force = 450,
+			Damage = 1000000
+		})
 	end
 end
 
