@@ -104,7 +104,7 @@ end
 
 function SWEP:Initialize()
 	if CLIENT then
-		self:AddHUDHelp("skick_help_msb1", "skick_help_msb2", true)
+		self:AddTTT2HUDHelp("skick_help_msb1", "skick_help_msb2", true)
 	else
 		self:SetWeaponHoldType("normal")
 	end
