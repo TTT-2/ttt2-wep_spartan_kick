@@ -1,4 +1,4 @@
-L = LANG.GetLanguageTableReference("deutsch")
+L = LANG.GetLanguageTableReference("de")
 
 L["name_spartan_kick"] = "Spartanischer Tritt"
 L["desc_spartan_kick"] = "Tritt sie aus ihrem Leben!"

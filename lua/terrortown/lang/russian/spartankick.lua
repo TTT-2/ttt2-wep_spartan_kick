@@ -1,4 +1,4 @@
-L = LANG.GetLanguageTableReference("Русский")
+L = LANG.GetLanguageTableReference("ru")
 
 L["name_spartan_kick"] = "Спартанский пинок"
 L["desc_spartan_kick"] = "Пните их из жизни!"
